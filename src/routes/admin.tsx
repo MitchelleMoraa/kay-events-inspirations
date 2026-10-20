@@ -114,7 +114,9 @@ function AddInspiration() {
       const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "")}`;
       const up = await supabase.storage.from("inspirations").upload(path, file);
       if (up.error) { setBusy(false); return toast.error(up.error.message); }
-      image_url = supabase.storage.from("inspirations").getPublicUrl(path).data.publicUrl;
+      const signed = await supabase.storage.from("inspirations").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (signed.error) { setBusy(false); return toast.error(signed.error.message); }
+      image_url = signed.data.signedUrl;
     }
     const { error } = await supabase.from("inspirations").insert({
       event_type: String(f.get("event_type")),

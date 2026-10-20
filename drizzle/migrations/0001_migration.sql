@@ -1,0 +1,3 @@
+CREATE POLICY "read inspiration images" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'inspirations' AND public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admin upload inspiration images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'inspirations' AND public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admin delete inspiration images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'inspirations' AND public.has_role(auth.uid(),'admin'));
