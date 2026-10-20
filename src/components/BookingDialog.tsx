@@ -37,7 +37,7 @@ export function BookingDialog({
       message: String(f.get("message") || "").slice(0, 2000),
     });
     setBusy(false);
-    if (error) return toast.error("Could not send your request. Please try again.");
+    if (error) { toast.error("Could not send your request. Please try again."); return; }
     toast.success("Request sent! Kay Events will get in touch soon.");
     setOpen(false);
   }

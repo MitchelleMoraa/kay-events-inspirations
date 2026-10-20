@@ -79,7 +79,7 @@ function AuthForm() {
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + "/admin" } });
     setBusy(false);
-    if (res.error) return toast.error(res.error.message);
+    if (res.error) { toast.error(res.error.message); return; }
     if (mode === "up" && !res.data.session) toast.success("Check your email to confirm your account.");
   }
   return (
@@ -113,9 +113,9 @@ function AddInspiration() {
     if (file && file.size) {
       const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "")}`;
       const up = await supabase.storage.from("inspirations").upload(path, file);
-      if (up.error) { setBusy(false); return toast.error(up.error.message); }
+      if (up.error) { setBusy(false); toast.error(up.error.message); return; }
       const signed = await supabase.storage.from("inspirations").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-      if (signed.error) { setBusy(false); return toast.error(signed.error.message); }
+      if (signed.error) { setBusy(false); toast.error(signed.error.message); return; }
       image_url = signed.data.signedUrl;
     }
     const { error } = await supabase.from("inspirations").insert({
@@ -128,7 +128,7 @@ function AddInspiration() {
       budget_items: items.filter((i) => i.item).map((i) => ({ item: i.item, cost: Number(i.cost) || 0 })),
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Inspiration added");
     form.reset(); setItems([{ item: "", cost: "" }]);
     qc.invalidateQueries({ queryKey: ["inspirations"] });
