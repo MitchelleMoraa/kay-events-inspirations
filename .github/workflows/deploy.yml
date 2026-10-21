@@ -38,6 +38,13 @@ jobs:
       - name: Build website
         run: npm run build
 
+      - name: Check build output
+        run: |
+          echo "Files in the project:"
+          ls -la
+          echo "Looking for website output folders:"
+          find . -maxdepth 4 -type d \( -name dist -o -name build \) -print
+
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
         with:
