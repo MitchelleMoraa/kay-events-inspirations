@@ -1,0 +1,1 @@
+ALTER TABLE public.inspirations ADD COLUMN additional_image_urls text[] NOT NULL DEFAULT '{}';

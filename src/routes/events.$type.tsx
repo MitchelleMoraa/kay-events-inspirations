@@ -18,6 +18,8 @@ export const Route = createFileRoute("/events/$type")({
         { name: "description", content: `${t} decor inspirations with budget plans, prices and setup times from Kay Events.` },
         { property: "og:title", content: `${t} Inspirations — Kay Events` },
         { property: "og:description", content: `Browse and book ${t.toLowerCase()} setups by Kay Events.` },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
       ],
     };
   },

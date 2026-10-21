@@ -3,15 +3,27 @@ import { Clock, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookingDialog } from "./BookingDialog";
 import { downloadInspiration } from "@/lib/download-inspiration";
-import { formatKES, type Inspiration } from "@/lib/kay";
+import { formatKES, inspirationPhotos, type Inspiration } from "@/lib/kay";
 
 export function InspirationCard({ insp }: { insp: Inspiration }) {
   const [dl, setDl] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const photos = inspirationPhotos(insp);
+  const activePhoto = selectedPhoto && photos.includes(selectedPhoto) ? selectedPhoto : photos[0];
   const total = insp.budget_items.reduce((s, b) => s + Number(b.cost), 0);
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-elegant">
-      {insp.image_url && (
-        <img src={insp.image_url} alt={insp.title} loading="lazy" width={1280} height={896} className="aspect-[4/3] w-full object-cover" />
+      {activePhoto && (
+        <img src={activePhoto} alt={insp.title} loading="lazy" width={1280} height={896} className="aspect-[4/3] w-full object-cover" />
+      )}
+      {photos.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto p-3" aria-label={`${insp.title} photos`}>
+          {photos.map((url, index) => (
+            <Button key={url} variant="outline" className="h-16 w-20 shrink-0 overflow-hidden p-0" aria-label={`View photo ${index + 1} of ${insp.title}`} aria-pressed={activePhoto === url} onClick={() => setSelectedPhoto(url)}>
+              <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </Button>
+          ))}
+        </div>
       )}
       <div className="p-6">
         <div className="flex items-start justify-between gap-3">

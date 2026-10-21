@@ -16,6 +16,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Find event inspirations with budget plans, prices and setup times. Book Kay Events today." },
       { property: "og:title", content: "Kay Events — Book us today" },
       { property: "og:description", content: "Wedding, birthday, baby shower and corporate event styling with clear budgets." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(testimonialsQuery()),

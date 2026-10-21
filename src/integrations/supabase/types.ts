@@ -55,6 +55,7 @@ export type Database = {
       }
       inspirations: {
         Row: {
+          additional_image_urls: string[]
           budget_items: Json
           created_at: string
           description: string
@@ -66,6 +67,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          additional_image_urls?: string[]
           budget_items?: Json
           created_at?: string
           description?: string
@@ -77,6 +79,7 @@ export type Database = {
           title: string
         }
         Update: {
+          additional_image_urls?: string[]
           budget_items?: Json
           created_at?: string
           description?: string
