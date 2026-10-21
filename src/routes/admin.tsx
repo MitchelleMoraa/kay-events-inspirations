@@ -198,21 +198,132 @@ function Bookings() {
 function ManageInspirations() {
   const qc = useQueryClient();
   const { data } = useQuery(inspirationsQuery());
+  const [editing, setEditing] = useState<Inspiration | null>(null);
+
   return (
     <section className="mt-10">
       <h2 className="font-display text-2xl text-burgundy">All inspirations</h2>
       <div className="mt-4 divide-y divide-border rounded-2xl border border-border bg-card">
+        {!data?.length && <p className="p-4 text-sm text-muted-foreground">No inspirations yet.</p>}
         {data?.map((i) => (
           <div key={i.id} className="flex items-center justify-between gap-4 p-4 text-sm">
             <span><b>{i.title}</b> · {i.event_type} · {formatKES(i.price)}</span>
-            <Button variant="ghost" size="sm" onClick={async () => {
-              if (!confirm(`Delete “${i.title}”?`)) return;
-              const { error } = await supabase.from("inspirations").delete().eq("id", i.id);
-              if (error) toast.error(error.message); else qc.invalidateQueries({ queryKey: ["inspirations"] });
-            }}><Trash2 className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setEditing(i)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={async () => {
+                if (!confirm(`Delete “${i.title}”?`)) return;
+                const { error } = await supabase.from("inspirations").delete().eq("id", i.id);
+                if (error) toast.error(error.message); else qc.invalidateQueries({ queryKey: ["inspirations"] });
+              }}><Trash2 className="h-4 w-4" /></Button>
+            </div>
           </div>
         ))}
       </div>
+      {editing && (
+        <EditInspiration
+          insp={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </section>
+  );
+}
+
+function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [items, setItems] = useState(
+    (insp.budget_items.length ? insp.budget_items : [{ item: "", cost: "" }]).map((b) => ({
+      item: b.item,
+      cost: String(b.cost),
+    }))
+  );
+  const [busy, setBusy] = useState(false);
+  const [removeImage, setRemoveImage] = useState(false);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setBusy(true);
+
+    const update: Record<string, unknown> = {
+      event_type: String(f.get("event_type")),
+      title: String(f.get("title")),
+      description: String(f.get("description")),
+      price: Number(f.get("price")) || 0,
+      setup_duration: String(f.get("setup_duration")),
+      budget_items: items
+        .filter((i) => i.item)
+        .map((i) => ({ item: i.item, cost: Number(i.cost) || 0 })),
+    };
+
+    const file = f.get("image") as File | null;
+    if (file && file.size) {
+      const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "")}`;
+      const up = await supabase.storage.from("inspirations").upload(path, file);
+      if (up.error) { setBusy(false); toast.error(up.error.message); return; }
+      const signed = await supabase.storage.from("inspirations").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (signed.error) { setBusy(false); toast.error(signed.error.message); return; }
+      update.image_url = signed.data.signedUrl;
+    } else if (removeImage) {
+      update.image_url = "";
+    }
+
+    const { error } = await supabase.from("inspirations").update(update).eq("id", insp.id);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Inspiration updated");
+    qc.invalidateQueries({ queryKey: ["inspirations"] });
+    onClose();
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-burgundy">Edit “{insp.title}”</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-3">
+          <div className="grid gap-1">
+            <Label htmlFor="edit-event-type">Event type</Label>
+            <select id="edit-event-type" name="event_type" defaultValue={insp.event_type} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+              {EVENT_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-1"><Label htmlFor="edit-title">Title</Label><Input id="edit-title" name="title" defaultValue={insp.title} required /></div>
+          <div className="grid gap-1"><Label htmlFor="edit-description">Description</Label><Textarea id="edit-description" name="description" defaultValue={insp.description} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1"><Label htmlFor="edit-price">Price (KES)</Label><Input id="edit-price" name="price" type="number" min={0} defaultValue={insp.price} required /></div>
+            <div className="grid gap-1"><Label htmlFor="edit-setup">Setup duration</Label><Input id="edit-setup" name="setup_duration" defaultValue={insp.setup_duration} required /></div>
+          </div>
+          {insp.image_url && (
+            <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
+              <img src={insp.image_url} alt="" className="h-16 w-24 rounded-lg object-cover" />
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={removeImage} onChange={(e) => setRemoveImage(e.target.checked)} /> Remove photo
+              </label>
+            </div>
+          )}
+          <div className="grid gap-1"><Label htmlFor="edit-image">Replace photo</Label><Input id="edit-image" name="image" type="file" accept="image/*" /></div>
+          <div className="grid gap-2">
+            <Label>Budget plan</Label>
+            {items.map((it, i) => (
+              <div key={i} className="flex gap-2">
+                <Input placeholder="Item" value={it.item} onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, item: e.target.value } : x))} />
+                <Input placeholder="Cost" type="number" className="w-32" value={it.cost} onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, cost: e.target.value } : x))} />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setItems(items.filter((_, j) => j !== i))}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => setItems([...items, { item: "", cost: "" }])}>
+              <Plus className="mr-1 h-4 w-4" />Add line
+            </Button>
+          </div>
+          <Button disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
