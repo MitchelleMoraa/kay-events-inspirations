@@ -28,9 +28,19 @@ export type Inspiration = {
   title: string;
   description: string;
   image_url: string;
+  additional_image_urls?: string[];
   price: number;
   setup_duration: string;
   budget_items: BudgetItem[];
 };
 
 export const formatKES = (n: number) => "KES " + Number(n).toLocaleString("en-KE");
+
+export function inspirationPhotos(insp: Pick<Inspiration, "image_url" | "additional_image_urls">) {
+  return [insp.image_url, ...(insp.additional_image_urls ?? [])].filter(Boolean);
+}
+
+export function photoUpdate(retained: string[], added: string[]) {
+  const photos = [...retained, ...added];
+  return { image_url: photos[0] ?? "", additional_image_urls: photos.slice(1) };
+}

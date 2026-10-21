@@ -10,6 +10,8 @@ export const Route = createFileRoute("/contact")({
       { name: "description", content: "Reach Kay Events by email, phone, WhatsApp, Instagram or TikTok." },
       { property: "og:title", content: "Contact Kay Events" },
       { property: "og:description", content: "Inquiries and support for your next event." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Database } from "@/integrations/supabase/types";
-import { EVENT_TYPES, formatKES, type Inspiration } from "@/lib/kay";
+import { EVENT_TYPES, formatKES, inspirationPhotos, photoUpdate, type Inspiration } from "@/lib/kay";
 import { inspirationsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/admin")({
@@ -27,6 +27,8 @@ export const Route = createFileRoute("/admin")({
       { property: "og:title", content: "Owner dashboard — Kay Events" },
       { property: "og:description", content: "Private area for the Kay Events owner." },
       { name: "robots", content: "noindex" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AdminPage,
@@ -210,7 +212,7 @@ function ManageInspirations() {
           <div key={i.id} className="flex items-center justify-between gap-4 p-4 text-sm">
             <span><b>{i.title}</b> · {i.event_type} · {formatKES(i.price)}</span>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setEditing(i)}>
+              <Button variant="ghost" size="sm" aria-label={`Edit ${i.title}`} title={`Edit ${i.title}`} onClick={() => setEditing(i)}>
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={async () => {
@@ -241,7 +243,15 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
     }))
   );
   const [busy, setBusy] = useState(false);
-  const [removeImage, setRemoveImage] = useState(false);
+  const [photos, setPhotos] = useState(() => inspirationPhotos(insp));
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [files]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -259,24 +269,30 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
         .map((i) => ({ item: i.item, cost: Number(i.cost) || 0 })),
     };
 
-    const file = f.get("image") as File | null;
-    if (file && file.size) {
-      const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "")}`;
-      const up = await supabase.storage.from("inspirations").upload(path, file);
-      if (up.error) { setBusy(false); toast.error(up.error.message); return; }
-      const signed = await supabase.storage.from("inspirations").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-      if (signed.error) { setBusy(false); toast.error(signed.error.message); return; }
-      update.image_url = signed.data.signedUrl;
-    } else if (removeImage) {
-      update.image_url = "";
+    const uploadedPaths: string[] = [];
+    try {
+      const added: string[] = [];
+      for (const file of files) {
+        const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "")}`;
+        const up = await supabase.storage.from("inspirations").upload(path, file);
+        if (up.error) throw up.error;
+        uploadedPaths.push(path);
+        const signed = await supabase.storage.from("inspirations").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+        if (signed.error) throw signed.error;
+        added.push(signed.data.signedUrl);
+      }
+      Object.assign(update, photoUpdate(photos, added));
+      const { error } = await supabase.from("inspirations").update(update).eq("id", insp.id);
+      if (error) throw error;
+      toast.success("Inspiration updated");
+      qc.invalidateQueries({ queryKey: ["inspirations"] });
+      onClose();
+    } catch (error) {
+      if (uploadedPaths.length) await supabase.storage.from("inspirations").remove(uploadedPaths);
+      toast.error(error instanceof Error ? error.message : "Could not save photos. Please try again.");
+    } finally {
+      setBusy(false);
     }
-
-    const { error } = await supabase.from("inspirations").update(update).eq("id", insp.id);
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Inspiration updated");
-    qc.invalidateQueries({ queryKey: ["inspirations"] });
-    onClose();
   }
 
   return (
@@ -286,6 +302,7 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
           <DialogTitle className="font-display text-burgundy">Edit “{insp.title}”</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3">
+          <fieldset disabled={busy} className="grid min-w-0 gap-3">
           <div className="grid gap-1">
             <Label htmlFor="edit-event-type">Event type</Label>
             <select id="edit-event-type" name="event_type" defaultValue={insp.event_type} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
@@ -298,15 +315,33 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
             <div className="grid gap-1"><Label htmlFor="edit-price">Price (KES)</Label><Input id="edit-price" name="price" type="number" min={0} defaultValue={insp.price} required /></div>
             <div className="grid gap-1"><Label htmlFor="edit-setup">Setup duration</Label><Input id="edit-setup" name="setup_duration" defaultValue={insp.setup_duration} required /></div>
           </div>
-          {insp.image_url && (
-            <div className="flex items-center justify-between rounded-xl bg-secondary/60 p-3">
-              <img src={insp.image_url} alt="" className="h-16 w-24 rounded-lg object-cover" />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={removeImage} onChange={(e) => setRemoveImage(e.target.checked)} /> Remove photo
-              </label>
+          <div className="grid gap-2">
+            <Label>Photos</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((url, index) => (
+                <div key={url} className="relative">
+                  <img src={url} alt={`Saved photo ${index + 1}`} className="aspect-square w-full rounded-md object-cover" />
+                  <Button type="button" variant="secondary" size="icon" className="absolute right-1 top-1 h-7 w-7" aria-label={`Remove saved photo ${index + 1}`} title="Remove photo" onClick={() => setPhotos(photos.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+              {previews.map((url, index) => (
+                <div key={url} className="relative">
+                  <img src={url} alt={`New photo ${index + 1}`} className="aspect-square w-full rounded-md object-cover" />
+                  <Button type="button" variant="secondary" size="icon" className="absolute right-1 top-1 h-7 w-7" aria-label={`Remove new photo ${index + 1}`} title="Remove photo" onClick={() => setFiles(files.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
             </div>
-          )}
-          <div className="grid gap-1"><Label htmlFor="edit-image">Replace photo</Label><Input id="edit-image" name="image" type="file" accept="image/*" /></div>
+            <Label htmlFor="edit-image">Add photos</Label>
+            <Input id="edit-image" name="images" type="file" accept="image/*" multiple onChange={(e) => {
+              const selected = Array.from(e.currentTarget.files ?? []);
+              if (selected.some((file) => !file.type.startsWith("image/"))) {
+                toast.error("Please choose image files.");
+              } else {
+                setFiles((current) => [...current, ...selected]);
+              }
+              e.currentTarget.value = "";
+            }} />
+          </div>
           <div className="grid gap-2">
             <Label>Budget plan</Label>
             {items.map((it, i) => (
@@ -323,6 +358,7 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
             </Button>
           </div>
           <Button disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>
