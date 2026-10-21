@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { Database } from "@/integrations/supabase/types";
 import { EVENT_TYPES, formatKES, type Inspiration } from "@/lib/kay";
 import { inspirationsQuery } from "@/lib/queries";
 
@@ -247,7 +248,7 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
     const f = new FormData(e.currentTarget);
     setBusy(true);
 
-    const update: Record<string, unknown> = {
+    const update: Database["public"]["Tables"]["inspirations"]["Update"] = {
       event_type: String(f.get("event_type")),
       title: String(f.get("title")),
       description: String(f.get("description")),
