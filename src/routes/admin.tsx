@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,15 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Database } from "@/integrations/supabase/types";
-import { EVENT_TYPES, formatKES, inspirationPhotos, photoUpdate, type Inspiration } from "@/lib/kay";
+import { EVENT_TYPES, formatKES, inspirationPhotos, photoUpdate, parseGuestCount, type Inspiration } from "@/lib/kay";
 import { inspirationsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Owner dashboard — Kay Events" },
+      { title: "Admin dashboard — Kay Events" },
       { name: "description", content: "Manage Kay Events inspirations and booking requests." },
-      { property: "og:title", content: "Owner dashboard — Kay Events" },
+      { property: "og:title", content: "Admin dashboard — Kay Events" },
       { property: "og:description", content: "Private area for the Kay Events owner." },
       { name: "robots", content: "noindex" },
       { property: "og:type", content: "website" },
@@ -52,11 +52,16 @@ function AdminPage() {
   }, [session]);
 
   if (!ready) return <main className="p-20 text-center">Loading…</main>;
-  if (!session) return <AuthForm />;
+  if (!session) return (
+    <main className="mx-auto max-w-sm px-4 py-20 text-center">
+      <h1 className="font-display text-3xl text-burgundy">Admin access</h1>
+      <Button asChild className="mt-6"><Link to="/login">Log in as admin</Link></Button>
+    </main>
+  );
   if (!isAdmin)
     return (
       <main className="mx-auto max-w-md p-20 text-center">
-        <p>This account isn't the owner account.</p>
+        <p>This account doesn't have admin access.</p>
         <Button className="mt-4" variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
       </main>
     );
@@ -64,7 +69,7 @@ function AdminPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl text-burgundy">Owner dashboard</h1>
+        <h1 className="font-display text-4xl text-burgundy">Admin dashboard</h1>
         <Button variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
       </div>
       <div className="mt-8 grid gap-10 lg:grid-cols-2">
@@ -76,36 +81,6 @@ function AdminPage() {
   );
 }
 
-function AuthForm() {
-  const [mode, setMode] = useState<"in" | "up">("in");
-  const [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const email = String(f.get("email")); const password = String(f.get("password"));
-    setBusy(true);
-    const res = mode === "in"
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + "/admin" } });
-    setBusy(false);
-    if (res.error) { toast.error(res.error.message); return; }
-    if (mode === "up" && !res.data.session) toast.success("Check your email to confirm your account.");
-  }
-  return (
-    <main className="mx-auto max-w-sm px-4 py-20">
-      <h1 className="font-display text-3xl text-burgundy">Owner {mode === "in" ? "sign in" : "sign up"}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">The first account created becomes the owner.</p>
-      <form onSubmit={submit} className="mt-6 grid gap-3">
-        <div className="grid gap-1"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
-        <div className="grid gap-1"><Label htmlFor="password">Password</Label><Input id="password" name="password" type="password" minLength={6} required /></div>
-        <Button disabled={busy}>{mode === "in" ? "Sign in" : "Create account"}</Button>
-      </form>
-      <button className="mt-4 text-sm text-primary" onClick={() => setMode(mode === "in" ? "up" : "in")}>
-        {mode === "in" ? "No account yet? Sign up" : "Have an account? Sign in"}
-      </button>
-    </main>
-  );
-}
 
 function AddInspiration() {
   const qc = useQueryClient();
@@ -116,6 +91,9 @@ function AddInspiration() {
     e.preventDefault();
     const form = e.currentTarget;
     const f = new FormData(form);
+    let guest_count: number | null;
+    try { guest_count = parseGuestCount(String(f.get("guest_count") ?? "")); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Invalid guest count"); return; }
     setBusy(true);
     let image_url = "";
     const file = f.get("image") as File | null;
@@ -134,6 +112,7 @@ function AddInspiration() {
       price: Number(f.get("price")) || 0,
       setup_duration: String(f.get("setup_duration")),
       image_url,
+      guest_count,
       budget_items: items.filter((i) => i.item).map((i) => ({ item: i.item, cost: Number(i.cost) || 0 })),
     });
     setBusy(false);
@@ -159,6 +138,7 @@ function AddInspiration() {
           <div className="grid gap-1"><Label htmlFor="price">Price (KES)</Label><Input id="price" name="price" type="number" min={0} required /></div>
           <div className="grid gap-1"><Label htmlFor="setup_duration">Setup duration</Label><Input id="setup_duration" name="setup_duration" placeholder="e.g. 1 day" required /></div>
         </div>
+        <div className="grid gap-1"><Label htmlFor="guest_count">Number of guests</Label><Input id="guest_count" name="guest_count" type="number" min={1} step={1} /></div>
         <div className="grid gap-1"><Label htmlFor="image">Photo</Label><Input id="image" name="image" type="file" accept="image/*" /></div>
         <div className="grid gap-2">
           <Label>Budget plan</Label>
@@ -256,9 +236,13 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    let guest_count: number | null;
+    try { guest_count = parseGuestCount(String(f.get("guest_count") ?? "")); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Invalid guest count"); return; }
     setBusy(true);
 
     const update: Database["public"]["Tables"]["inspirations"]["Update"] = {
+      guest_count,
       event_type: String(f.get("event_type")),
       title: String(f.get("title")),
       description: String(f.get("description")),
@@ -315,6 +299,7 @@ function EditInspiration({ insp, onClose }: { insp: Inspiration; onClose: () => 
             <div className="grid gap-1"><Label htmlFor="edit-price">Price (KES)</Label><Input id="edit-price" name="price" type="number" min={0} defaultValue={insp.price} required /></div>
             <div className="grid gap-1"><Label htmlFor="edit-setup">Setup duration</Label><Input id="edit-setup" name="setup_duration" defaultValue={insp.setup_duration} required /></div>
           </div>
+          <div className="grid gap-1"><Label htmlFor="edit-guests">Number of guests</Label><Input id="edit-guests" name="guest_count" type="number" min={1} step={1} defaultValue={insp.guest_count ?? ""} /></div>
           <div className="grid gap-2">
             <Label>Photos</Label>
             <div className="grid grid-cols-3 gap-2">

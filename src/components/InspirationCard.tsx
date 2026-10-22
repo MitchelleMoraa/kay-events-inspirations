@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, Download } from "lucide-react";
+import { Clock, Download, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookingDialog } from "./BookingDialog";
 import { downloadInspiration } from "@/lib/download-inspiration";
@@ -34,6 +34,7 @@ export function InspirationCard({ insp }: { insp: Inspiration }) {
         <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-accent-foreground">
           <Clock className="h-4 w-4" /> Setup: {insp.setup_duration}
         </p>
+        <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Number of guests: {insp.guest_count ?? "On request"}</p>
         <div className="mt-4 rounded-xl bg-secondary/60 p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Budget plan</p>
           <ul className="space-y-1 text-sm">
@@ -46,7 +47,7 @@ export function InspirationCard({ insp }: { insp: Inspiration }) {
           </ul>
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          <BookingDialog eventType={insp.event_type} inspirationTitle={insp.title} trigger={<Button>Book this event</Button>} />
+          <BookingDialog guestCount={insp.guest_count} eventType={insp.event_type} inspirationTitle={insp.title} trigger={<Button>Book this event</Button>} />
           <Button variant="outline" disabled={dl} onClick={async () => { setDl(true); await downloadInspiration(insp); setDl(false); }}>
             <Download className="mr-1 h-4 w-4" /> {dl ? "Preparing..." : "Download"}
           </Button>
