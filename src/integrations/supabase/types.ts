@@ -60,6 +60,7 @@ export type Database = {
           created_at: string
           description: string
           event_type: string
+          guest_count: number | null
           id: string
           image_url: string
           price: number
@@ -72,6 +73,7 @@ export type Database = {
           created_at?: string
           description?: string
           event_type: string
+          guest_count?: number | null
           id?: string
           image_url?: string
           price?: number
@@ -84,6 +86,7 @@ export type Database = {
           created_at?: string
           description?: string
           event_type?: string
+          guest_count?: number | null
           id?: string
           image_url?: string
           price?: number
