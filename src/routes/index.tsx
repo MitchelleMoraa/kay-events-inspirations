@@ -48,7 +48,7 @@ function Index() {
         <div className="absolute inset-0 bg-hero" />
         <div className="relative mx-auto max-w-4xl px-4 py-28 text-center text-primary-foreground">
           <p className="text-xs uppercase tracking-[0.4em] text-gold">Kay Events</p>
-          <h1 className="mt-4 font-display text-5xl leading-tight md:text-7xl">Your celebration, beautifully styled</h1>
+          <h1 className="mt-4 font-display text-5xl leading-tight md:text-7xl">Kay Events</h1>
           <p className="mx-auto mt-4 max-w-xl opacity-90">Choose your event and explore real inspirations — each with a budget plan, price and setup time.</p>
           <form
             onSubmit={(e) => { e.preventDefault(); if (matches[0]) go(matches[0]); }}

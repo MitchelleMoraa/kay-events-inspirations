@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 
 export function BookingDialog({
-  eventType, inspirationTitle = "", trigger,
-}: { eventType: string; inspirationTitle?: string; trigger: ReactNode }) {
+  eventType, inspirationTitle = "", guestCount, trigger,
+}: { eventType: string; inspirationTitle?: string; guestCount?: number | null; trigger: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -60,9 +61,10 @@ export function BookingDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1"><Label htmlFor="date">Event date</Label><Input id="date" name="date" type="date" /></div>
-            <div className="grid gap-1"><Label htmlFor="guests">Guests</Label><Input id="guests" name="guests" type="number" min={1} /></div>
+            <div className="grid gap-1"><Label htmlFor="guests">Guests</Label><Input id="guests" name="guests" type="number" min={1} step={1} defaultValue={guestCount ?? ""} /></div>
           </div>
           <div className="grid gap-1"><Label htmlFor="message">Message</Label><Textarea id="message" name="message" maxLength={2000} /></div>
+          <Link to="/terms" target="_blank" className="text-sm text-primary underline">Terms and conditions of service</Link>
           <Button type="submit" disabled={busy}>{busy ? "Sending..." : "Send request"}</Button>
         </form>
       </DialogContent>

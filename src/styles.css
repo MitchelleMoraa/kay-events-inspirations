@@ -68,6 +68,7 @@
   --color-baby-pink: var(--baby-pink);
   --font-display: "Playfair Display", serif;
   --font-sans: "Jost", sans-serif;
+  --font-script: "Great Vibes", cursive;
 }
 
 :root {
@@ -132,3 +133,6 @@
 @utility shadow-elegant { box-shadow: var(--shadow-elegant); }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @utility animate-marquee { animation: marquee 25s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}

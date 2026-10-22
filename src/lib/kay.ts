@@ -6,6 +6,7 @@ export const EVENT_TYPES = [
   "Bridal Shower",
   "Graduation",
   "Anniversary",
+  "Proposal",
 ] as const;
 
 export const slugify = (t: string) => t.toLowerCase().replace(/\s+/g, "-");
@@ -29,6 +30,7 @@ export type Inspiration = {
   description: string;
   image_url: string;
   additional_image_urls?: string[];
+  guest_count?: number | null;
   price: number;
   setup_duration: string;
   budget_items: BudgetItem[];
@@ -43,4 +45,11 @@ export function inspirationPhotos(insp: Pick<Inspiration, "image_url" | "additio
 export function photoUpdate(retained: string[], added: string[]) {
   const photos = [...retained, ...added];
   return { image_url: photos[0] ?? "", additional_image_urls: photos.slice(1) };
+}
+
+export function parseGuestCount(value: string) {
+  if (!value.trim()) return null;
+  const count = Number(value);
+  if (!Number.isSafeInteger(count) || count < 1) throw new Error("Enter a whole number of guests greater than zero.");
+  return count;
 }
