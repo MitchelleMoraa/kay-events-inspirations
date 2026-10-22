@@ -7,7 +7,7 @@ export function Marquee() {
           <div key={k} className="flex gap-10" aria-hidden={k === 1}>
             {items.map((_, i) => (
               <span key={i} className="font-display text-lg italic tracking-wide">
-                Book us today <span className="mx-4 text-gold">✦</span>
+                Welcome to Kay Events <span className="mx-4 text-gold">✦</span> Book with us today <span className="mx-4 text-gold">✦</span>
               </span>
             ))}
           </div>

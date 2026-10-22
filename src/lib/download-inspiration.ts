@@ -9,7 +9,9 @@ async function toDataUrl(src: string): Promise<string | null> {
     const c = document.createElement("canvas");
     c.width = img.naturalWidth;
     c.height = img.naturalHeight;
-    c.getContext("2d")!.drawImage(img, 0, 0);
+    const context = c.getContext("2d");
+    if (!context) return null;
+    context.drawImage(img, 0, 0);
     return c.toDataURL("image/jpeg", 0.85);
   } catch {
     return null;
@@ -53,6 +55,11 @@ export async function downloadInspiration(insp: Inspiration) {
   doc.text(`Package price: ${formatKES(insp.price)}`, 14, y);
   doc.text(`Setup duration: ${insp.setup_duration}`, W - 14, y, { align: "right" });
   y += 10;
+
+  if (insp.guest_count) {
+    doc.text(`Number of guests: ${insp.guest_count}`, 14, y);
+    y += 8;
+  }
 
   doc.setFontSize(12);
   doc.text("Budget plan", 14, y);
