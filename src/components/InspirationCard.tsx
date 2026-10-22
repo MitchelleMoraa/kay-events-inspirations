@@ -47,7 +47,7 @@ export function InspirationCard({ insp }: { insp: Inspiration }) {
           </ul>
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          <BookingDialog guestCount={insp.guest_count} eventType={insp.event_type} inspirationTitle={insp.title} trigger={<Button>Book this event</Button>} />
+          <BookingDialog guestCount={insp.guest_count ?? null} eventType={insp.event_type} inspirationTitle={insp.title} trigger={<Button>Book this event</Button>} />
           <Button variant="outline" disabled={dl} onClick={async () => { setDl(true); await downloadInspiration(insp); setDl(false); }}>
             <Download className="mr-1 h-4 w-4" /> {dl ? "Preparing..." : "Download"}
           </Button>
